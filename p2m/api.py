@@ -15,8 +15,9 @@
 # limitations under the License.
 #
 from __future__ import division
+import tensorflow as tf
 import tflearn
-from layers import *
+from p2m.layers import *
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS

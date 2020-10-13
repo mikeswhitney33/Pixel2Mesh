@@ -15,9 +15,9 @@
 # limitations under the License.
 #
 import numpy as np
-import cPickle as pickle
+import pickle
 import threading
-import Queue
+import queue
 import sys
 from skimage import io,transform
 
@@ -25,7 +25,7 @@ class DataFetcher(threading.Thread):
 	def __init__(self, file_list):
 		super(DataFetcher, self).__init__()
 		self.stopped = False
-		self.queue = Queue.Queue(64)
+		self.queue = queue.Queue(64)
 
 		self.pkl_list = []
 		with open(file_list, 'r') as f:
@@ -55,19 +55,19 @@ class DataFetcher(threading.Thread):
 		img = img[:,:,:3].astype('float32')
 
 		return img, label, pkl_path.split('/')[-1]
-	
+
 	def run(self):
 		while self.index < 90000000 and not self.stopped:
 			self.queue.put(self.work(self.index % self.number))
 			self.index += 1
 			if self.index % self.number == 0:
 				np.random.shuffle(self.pkl_list)
-	
+
 	def fetch(self):
 		if self.stopped:
 			return None
 		return self.queue.get()
-	
+
 	def shutdown(self):
 		self.stopped = True
 		while not self.queue.empty():
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 	data.start()
 
 	image,point,normal,_,_ = data.fetch()
-	print image.shape
-	print point.shape
-	print normal.shape
+	print(image.shape)
+	print(point.shape)
+	print(normal.shape)
 	data.stopped = True

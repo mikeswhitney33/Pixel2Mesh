@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 import tensorflow as tf
-from chamfer import *
+from p2m.chamfer import *
 
 def laplace_coord(pred, placeholders, block_id):
 	vertex = tf.concat([pred, tf.zeros([1,3])], 0)
@@ -36,7 +36,7 @@ def laplace_loss(pred1, pred2, placeholders, block_id):
 	move_loss = tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(pred1, pred2)), 1)) * 100
 	move_loss = tf.cond(tf.equal(block_id,1), lambda:0., lambda:move_loss)
 	return laplace_loss + move_loss
-	
+
 def unit(tensor):
 	return tf.nn.l2_normalize(tensor, dim=1)
 

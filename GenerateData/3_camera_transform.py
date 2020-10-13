@@ -6,7 +6,7 @@ Created on Fri Oct 26 12:55:31 2018
 """
 
 import numpy as np
-import cPickle as pickle
+import pickle
 import cv2
 import os
 
@@ -22,9 +22,9 @@ def camera_info(param):
 
     camY = param[3]*np.sin(phi)
     temp = param[3]*np.cos(phi)
-    camX = temp * np.cos(theta)    
-    camZ = temp * np.sin(theta)        
-    cam_pos = np.array([camX, camY, camZ])        
+    camX = temp * np.cos(theta)
+    camZ = temp * np.sin(theta)
+    cam_pos = np.array([camX, camY, camZ])
 
     axisZ = cam_pos.copy()
     axisY = np.array([0,1,0])
@@ -35,7 +35,7 @@ def camera_info(param):
     return cam_mat, cam_pos
 
 if __name__ == '__main__':
-    
+
     vert_path = '1a0bc9ab92c915167ae33d942430658c/model_normal.xyz'
     vert = np.loadtxt(vert_path)
     position = vert[:, : 3] * 0.57
@@ -50,14 +50,14 @@ if __name__ == '__main__':
         pt_trans = np.dot(position-cam_pos, cam_mat.transpose())
         nom_trans = np.dot(normal, cam_mat.transpose())
         train_data = np.hstack((pt_trans, nom_trans))
-        
+
         #### project for sure
         img_path = os.path.join(os.path.split(view_path)[0], '%02d.png'%index)
         np.savetxt(img_path.replace('png','xyz'), train_data)
-        
+
         img = cv2.imread(img_path)
         img = cv2.resize(img, (224,224))
-        
+
         X,Y,Z = pt_trans.T
         F = 248
         h = (-Y)/(-Z)*F + 224/2.0

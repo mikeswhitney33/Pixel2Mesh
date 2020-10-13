@@ -5,7 +5,7 @@ Created on Fri Oct 26 12:55:31 2018
 @author: nanyang wang
 """
 
-import os,sys
+import os, sys
 import numpy as np
 import cv2
 import trimesh
@@ -17,9 +17,9 @@ def camera_info(param):
 
     camY = param[3]*np.sin(phi)
     temp = param[3]*np.cos(phi)
-    camX = temp * np.cos(theta)    
-    camZ = temp * np.sin(theta)        
-    cam_pos = np.array([camX, camY, camZ])        
+    camX = temp * np.cos(theta)
+    camZ = temp * np.sin(theta)
+    cam_pos = np.array([camX, camY, camZ])
 
     axisZ = cam_pos.copy()
     axisY = np.array([0,1,0])
@@ -30,13 +30,23 @@ def camera_info(param):
     cam_mat = sklearn.preprocessing.normalize(cam_mat, axis=1)
     return cam_mat, cam_pos
 
+def as_mesh(scene_or_mesh):
+    if isinstance(scene_or_mesh, trimesh.Scene):
+        mesh = trimesh.util.concatenate([
+            trimesh.Trimesh(vertices=m.vertices, faces=m.faces)
+            for m in scene_or_mesh.geometry.values()])
+    else:
+        mesh = scene_or_mesh
+    return mesh
+
 if __name__ == '__main__':
-    
+
     # 1 sampling
     obj_path = '1a0bc9ab92c915167ae33d942430658c/model.obj'
     mesh_list = trimesh.load_mesh(obj_path)
     if not isinstance(mesh_list, list):
         mesh_list = [mesh_list]
+    mesh_list = map(as_mesh, mesh_list)
     area_sum = 0
     for mesh in mesh_list:
         area_sum += np.sum(mesh.area_faces)
@@ -70,14 +80,14 @@ if __name__ == '__main__':
         pt_trans = np.dot(position-cam_pos, cam_mat.transpose())
         nom_trans = np.dot(normal, cam_mat.transpose())
         train_data = np.hstack((pt_trans, nom_trans))
-        
-        img_path = os.path.join(os.path.split(view_path)[0], '%02d.png'%index)
+
+        img_path = os.path.join(os.path.split(view_path)[0], f"{index:02d}.png")
         np.savetxt(img_path.replace('png','xyz'), train_data)
-        
+
         #### project for sure
         img = cv2.imread(img_path)
         img = cv2.resize(img, (224,224))
-        
+
         X,Y,Z = pt_trans.T
         F = 250
         h = (-Y)/(-Z)*F + 224/2.0

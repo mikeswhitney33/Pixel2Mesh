@@ -16,7 +16,7 @@
 #
 import numpy as np
 
-def construct_feed_dict(pkl, placeholders):
+def construct_feed_dict(pkl):
 	"""Construct feed dictionary."""
 	coord = pkl[0]
 	pool_idx = pkl[4]
@@ -30,12 +30,12 @@ def construct_feed_dict(pkl, placeholders):
 		edges.append(adj[0])
 
 	feed_dict = dict()
-	feed_dict.update({placeholders['features']: coord})
-	feed_dict.update({placeholders['edges'][i]: edges[i] for i in range(len(edges))})
-	feed_dict.update({placeholders['faces'][i]: faces[i] for i in range(len(faces))})
-	feed_dict.update({placeholders['pool_idx'][i]: pool_idx[i] for i in range(len(pool_idx))})
-	feed_dict.update({placeholders['lape_idx'][i]: lape_idx[i] for i in range(len(lape_idx))})
-	feed_dict.update({placeholders['support1'][i]: pkl[1][i] for i in range(len(pkl[1]))})
-	feed_dict.update({placeholders['support2'][i]: pkl[2][i] for i in range(len(pkl[2]))})
-	feed_dict.update({placeholders['support3'][i]: pkl[3][i] for i in range(len(pkl[3]))})
+	feed_dict.update({'features': coord})
+	feed_dict.update({'edges': [edges[i] for i in range(len(edges))]})
+	feed_dict.update({'faces': [faces[i] for i in range(len(faces))]})
+	feed_dict.update({'pool_idx': [pool_idx[i] for i in range(len(pool_idx))]})
+	feed_dict.update({'lape_idx': [lape_idx[i] for i in range(len(lape_idx))]})
+	feed_dict.update({'support1': [pkl[1][i] for i in range(len(pkl[1]))]})
+	feed_dict.update({'support2': [pkl[2][i] for i in range(len(pkl[2]))]})
+	feed_dict.update({'support3': [pkl[3][i] for i in range(len(pkl[3]))]})
 	return feed_dict
