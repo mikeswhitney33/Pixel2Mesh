@@ -40,7 +40,7 @@ class DataFetcher(threading.Thread):
 
 	def work(self, idx):
 		pkl_path = self.pkl_list[idx]
-		label = pickle.load(open(pkl_path, 'rb'))
+		label = pickle.load(open(pkl_path, 'rb'), encoding="latin")
 
 		img_path = pkl_path.replace('.dat', '.png')
 		'''

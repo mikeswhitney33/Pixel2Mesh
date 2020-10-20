@@ -25,16 +25,18 @@ import tensorflow as tf
 _LAYER_UIDS = {}
 
 def project(img_feat, x, y, dim):
+    print(img_feat.shape, x.shape, y.shape, dim)
     x1 = tf.floor(x)
-    x2 = tf.minimum(tf.ceil(x), tf.cast(tf.shape(img_feat)[0], tf.float32) - 1)
+    x2 = tf.minimum(tf.math.ceil(x), tf.cast(tf.shape(img_feat)[0], tf.float32) - 1)
     y1 = tf.floor(y)
-    y2 = tf.minimum(tf.ceil(y), tf.cast(tf.shape(img_feat)[1], tf.float32) - 1)
+    y2 = tf.minimum(tf.math.ceil(y), tf.cast(tf.shape(img_feat)[1], tf.float32) - 1)
     Q11 = tf.gather_nd(img_feat, tf.stack([tf.cast(x1,tf.int32), tf.cast(y1,tf.int32)],1))
     Q12 = tf.gather_nd(img_feat, tf.stack([tf.cast(x1,tf.int32), tf.cast(y2,tf.int32)],1))
     Q21 = tf.gather_nd(img_feat, tf.stack([tf.cast(x2,tf.int32), tf.cast(y1,tf.int32)],1))
     Q22 = tf.gather_nd(img_feat, tf.stack([tf.cast(x2,tf.int32), tf.cast(y2,tf.int32)],1))
 
     weights = tf.multiply(tf.subtract(x2,x), tf.subtract(y2,y))
+    print(weights.shape, Q11.shape, tf.tile(tf.reshape(weights, [-1, 1]), [1, dim]).shape)
     Q11 = tf.multiply(tf.tile(tf.reshape(weights,[-1,1]),[1,dim]), Q11)
 
     weights = tf.multiply(tf.subtract(x,x1), tf.subtract(y2,y))

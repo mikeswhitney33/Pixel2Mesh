@@ -84,10 +84,10 @@ data.start()
 
 @tf.function
 def train_step(features, img_inp, labels, support1, support2, support3, faces, edges, lape_idx, pool_idx):
-    out1, out2, out3, rloss = model(img_inp, [support1, support2, support3], pool_idx)
+    out1, out2, out3 = model(img_inp, [support1, support2, support3], pool_idx)
 
     # def call(self, inputs, supports, pool_idx):
-    return None, rloss, out1, out2, out3
+    return None, out1, out2, out3
 
 # Train graph model
 train_loss = open('record_train_loss.txt', 'a')
@@ -101,11 +101,11 @@ for epoch in range(args.epochs):
     for iters in range(train_number):
         # Fetch training data
         img_inp, y_train, data_id = data.fetch()
-        feed_dict.update({placeholders['img_inp']: img_inp})
-        feed_dict.update({placeholders['labels']: y_train})
+        feed_dict.update({'img_inp': img_inp})
+        feed_dict.update({'labels': y_train})
 
         # Training step
-        _, dists,out1,out2,out3 = train_step(**feed_dict)#  sess.run([model.opt_op,model.loss,model.output1,model.output2,model.output3], feed_dict=feed_dict)
+        _,out1,out2,out3 = train_step(**feed_dict)#  sess.run([model.opt_op,model.loss,model.output1,model.output2,model.output3], feed_dict=feed_dict)
         all_loss[iters] = dists
         mean_loss = np.mean(all_loss[np.where(all_loss)])
         if (iters+1) % 128 == 0:

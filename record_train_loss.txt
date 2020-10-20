@@ -4,3 +4,6 @@ Start training, lr =  0.000010
 Start training, lr =  0.000010
 Start training, lr =  0.000010
 Start training, lr =  0.000010
+Start training, lr =  0.000010
+Start training, lr =  0.000010
+Start training, lr =  0.000010

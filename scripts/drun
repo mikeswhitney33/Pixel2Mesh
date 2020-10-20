@@ -1,3 +1,3 @@
 #!/bin/zsh
 
-docker run -u $(id -u):$(id -g) --rm -it --name "pix2mesh" --mount type=bind,source="$(pwd)",target=/usr/src pix2mesh:latest $@
+docker run -u $(id -u):$(id -g) --rm -it --gpus=all --name "pix2mesh" --mount type=bind,source="$(pwd)",target=/usr/src pix2mesh:latest $@

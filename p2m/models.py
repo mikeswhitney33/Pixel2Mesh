@@ -319,7 +319,7 @@ class GCNModel(tf.keras.Model):
         self.unpool_layer2 = GraphPooling(pool_id=2)
 
     def call(self, inputs, supports, pool_idx):
-        img_feat, rloss = self.cnn18(inputs)
+        img_feat = self.cnn18(inputs)
 
         args = {
             "img_feat": img_feat,
@@ -329,6 +329,7 @@ class GCNModel(tf.keras.Model):
         # Build sequential resnet model
         eltwise = [3,5,7,9,11,13, 19,21,23,25,27,29, 35,37,39,41,43,45]
         concat = [15, 31]
+        activations = []
         activations.append(inputs)
         for idx, layer in enumerate(self.gcn_layers):
             hidden = layer(activations[-1], **args)
@@ -346,14 +347,14 @@ class GCNModel(tf.keras.Model):
 
         output3 = activations[-1]
 
-        return output1, output2, output3, rloss
+        return output1, output2, output3
 
 
 
 
 
 def conv2(features, kernel_size, stride):
-    return Conv2D(features, kernel_size, stride, activation="relu", kernel_regularizer=l2(1e-5))
+    return Conv2D(features, kernel_size, stride, activation="relu", kernel_regularizer=l2(1e-5), padding='same')
 
 def conv_block(features, n, first_k=3):
     conv = [conv2(features, first_k, 2)]
@@ -379,8 +380,8 @@ class CNN18(tf.keras.Model):
         x4 = self.conv256(x3)
         x5 = self.conv512(x4)
 
-        ret = [x0, x1, x2, x3, x4, x5]
-        return ret, tf.add_n([x.regularization_losses for x in ret]) * 0.3
+        ret = [tf.squeeze(x2), tf.squeeze(x3), tf.squeeze(x4), tf.squeeze(x5)]
+        return ret
 
 #     def build_cnn18(self):
 #         x=self.placeholders['img_inp']
