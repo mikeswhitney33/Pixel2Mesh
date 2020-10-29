@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 import tensorflow as tf
-import cPickle as pickle
+import pickle
 from skimage import io,transform
 from p2m.api import GCN
 from p2m.utils import *
@@ -32,7 +32,7 @@ flags.DEFINE_string('image', 'Data/examples/plane.png', 'Testing image.')
 flags.DEFINE_float('learning_rate', 0., 'Initial learning rate.')
 flags.DEFINE_integer('hidden', 256, 'Number of units in  hidden layer.')
 flags.DEFINE_integer('feat_dim', 963, 'Number of units in perceptual feature layer.')
-flags.DEFINE_integer('coord_dim', 3, 'Number of units in output layer.') 
+flags.DEFINE_integer('coord_dim', 3, 'Number of units in output layer.')
 flags.DEFINE_float('weight_decay', 5e-6, 'Weight decay for L2 loss.')
 
 # Define placeholders(dict) and model
@@ -53,13 +53,13 @@ placeholders = {
 model = GCN(placeholders, logging=True)
 
 def load_image(img_path):
-	img = io.imread(img_path)
-	if img.shape[2] == 4:
-		img[np.where(img[:,:,3]==0)] = 255
-	img = transform.resize(img, (224,224))
-	img = img[:,:,:3].astype('float32')
+    img = io.imread(img_path)
+    if img.shape[2] == 4:
+        img[np.where(img[:,:,3]==0)] = 255
+    img = transform.resize(img, (224,224))
+    img = img[:,:,:3].astype('float32')
 
-	return img
+    return img
 
 # Load data, initialize session
 config=tf.ConfigProto()
@@ -70,7 +70,7 @@ sess.run(tf.global_variables_initializer())
 model.load(sess)
 
 # Runing the demo
-pkl = pickle.load(open('Data/ellipsoid/info_ellipsoid.dat', 'rb'))
+pkl = pickle.load(open('Data/ellipsoid/info_ellipsoid.dat', 'rb'), encoding="latin1")
 feed_dict = construct_feed_dict(pkl, placeholders)
 
 img_inp = load_image(FLAGS.image)
@@ -84,4 +84,4 @@ mesh = np.vstack((vert, face))
 pred_path = FLAGS.image.replace('.png', '.obj')
 np.savetxt(pred_path, mesh, fmt='%s', delimiter=' ')
 
-print 'Saved to', pred_path
+print('Saved to', pred_path)

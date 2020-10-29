@@ -29,7 +29,7 @@ flags.DEFINE_string('data_list', 'Data/test_list.txt', 'Data list path.')
 flags.DEFINE_float('learning_rate', 3e-5, 'Initial learning rate.')
 flags.DEFINE_integer('hidden', 192, 'Number of units in  hidden layer.')
 flags.DEFINE_integer('feat_dim', 963, 'Number of units in perceptual feature layer.')
-flags.DEFINE_integer('coord_dim', 3, 'Number of units in output layer.') 
+flags.DEFINE_integer('coord_dim', 3, 'Number of units in output layer.')
 flags.DEFINE_float('weight_decay', 5e-6, 'Weight decay for L2 loss.')
 
 # Define placeholders(dict) and model
@@ -51,39 +51,39 @@ model = GCN(placeholders, logging=True)
 
 # Construct feed dictionary
 def construct_feed_dict(pkl, placeholders):
-	coord = pkl[0]
-	pool_idx = pkl[4]
-	faces = pkl[5]
-	lape_idx = pkl[7]
-	edges = []
-	for i in range(1,4):
-		adj = pkl[i][1]
-		edges.append(adj[0])
+    coord = pkl[0]
+    pool_idx = pkl[4]
+    faces = pkl[5]
+    lape_idx = pkl[7]
+    edges = []
+    for i in range(1,4):
+        adj = pkl[i][1]
+        edges.append(adj[0])
 
-	feed_dict = dict()
-	feed_dict.update({placeholders['features']: coord})
-	feed_dict.update({placeholders['edges'][i]: edges[i] for i in range(len(edges))})
-	feed_dict.update({placeholders['faces'][i]: faces[i] for i in range(len(faces))})
-	feed_dict.update({placeholders['pool_idx'][i]: pool_idx[i] for i in range(len(pool_idx))})
-	feed_dict.update({placeholders['lape_idx'][i]: lape_idx[i] for i in range(len(lape_idx))})
-	feed_dict.update({placeholders['support1'][i]: pkl[1][i] for i in range(len(pkl[1]))})
-	feed_dict.update({placeholders['support2'][i]: pkl[2][i] for i in range(len(pkl[2]))})
-	feed_dict.update({placeholders['support3'][i]: pkl[3][i] for i in range(len(pkl[3]))})
-	return feed_dict
+    feed_dict = dict()
+    feed_dict.update({placeholders['features']: coord})
+    feed_dict.update({placeholders['edges'][i]: edges[i] for i in range(len(edges))})
+    feed_dict.update({placeholders['faces'][i]: faces[i] for i in range(len(faces))})
+    feed_dict.update({placeholders['pool_idx'][i]: pool_idx[i] for i in range(len(pool_idx))})
+    feed_dict.update({placeholders['lape_idx'][i]: lape_idx[i] for i in range(len(lape_idx))})
+    feed_dict.update({placeholders['support1'][i]: pkl[1][i] for i in range(len(pkl[1]))})
+    feed_dict.update({placeholders['support2'][i]: pkl[2][i] for i in range(len(pkl[2]))})
+    feed_dict.update({placeholders['support3'][i]: pkl[3][i] for i in range(len(pkl[3]))})
+    return feed_dict
 
 def f_score(label, predict, dist_label, dist_pred, threshold):
-	num_label = label.shape[0]
-	num_predict = predict.shape[0]
+    num_label = label.shape[0]
+    num_predict = predict.shape[0]
 
-	f_scores = []
-	for i in range(len(threshold)):
-		num = len(np.where(dist_label <= threshold[i])[0])
-		recall = 100.0 * num / num_label
-		num = len(np.where(dist_pred <= threshold[i])[0])
-		precision = 100.0 * num / num_predict
+    f_scores = []
+    for i in range(len(threshold)):
+        num = len(np.where(dist_label <= threshold[i])[0])
+        recall = 100.0 * num / num_label
+        num = len(np.where(dist_pred <= threshold[i])[0])
+        precision = 100.0 * num / num_predict
 
-		f_scores.append((2*precision*recall)/(precision+recall+1e-8))
-	return np.array(f_scores)
+        f_scores.append((2*precision*recall)/(precision+recall+1e-8))
+    return np.array(f_scores)
 
 # Load data
 data = DataFetcher(FLAGS.data_list)
@@ -120,34 +120,34 @@ sum_cd = {i:0 for i in class_name}
 sum_emd = {i:0 for i in class_name}
 
 for iters in range(train_number):
-	# Fetch training data
-	img_inp, label, model_id = data.fetch()
-	feed_dict.update({placeholders['img_inp']: img_inp})
-	feed_dict.update({placeholders['labels']: label})
-	# Training step
-	predict = sess.run(model.output3, feed_dict=feed_dict)
+    # Fetch training data
+    img_inp, label, model_id = data.fetch()
+    feed_dict.update({placeholders['img_inp']: img_inp})
+    feed_dict.update({placeholders['labels']: label})
+    # Training step
+    predict = sess.run(model.output3, feed_dict=feed_dict)
 
-	label = label[:, :3]
-	d1,i1,d2,i2,emd = sess.run([dist1,idx1,dist2,idx2, emd_dist], feed_dict={xyz1:label,xyz2:predict})
-	cd = np.mean(d1) + np.mean(d2)
+    label = label[:, :3]
+    d1,i1,d2,i2,emd = sess.run([dist1,idx1,dist2,idx2, emd_dist], feed_dict={xyz1:label,xyz2:predict})
+    cd = np.mean(d1) + np.mean(d2)
 
-	class_id = model_id.split('_')[0]
-	model_number[class_id] += 1.0
+    class_id = model_id.split('_')[0]
+    model_number[class_id] += 1.0
 
-	sum_f[class_id] += f_score(label,predict,d1,d2,[0.0001, 0.0002])
-	sum_cd[class_id] += cd # cd is the mean of all distance
-	sum_emd[class_id] += emd[0] # emd is the sum of all distance
-	print 'processed number', iters
+    sum_f[class_id] += f_score(label,predict,d1,d2,[0.0001, 0.0002])
+    sum_cd[class_id] += cd # cd is the mean of all distance
+    sum_emd[class_id] += emd[0] # emd is the sum of all distance
+    print('processed number', iters)
 
 log = open('record_evaluation.txt', 'a')
 for item in model_number:
-	number = model_number[item] + 1e-8
-	f = sum_f[item] / number
-	cd = (sum_cd[item] / number) * 1000 #cd is the mean of all distance, cd is L2
-	emd = (sum_emd[item] / number) * 0.01 #emd is the sum of all distance, emd is L1
-	print class_name[item], int(number), f, cd, emd
-	print >> log, class_name[item], int(number), f, cd, emd
+    number = model_number[item] + 1e-8
+    f = sum_f[item] / number
+    cd = (sum_cd[item] / number) * 1000 #cd is the mean of all distance, cd is L2
+    emd = (sum_emd[item] / number) * 0.01 #emd is the sum of all distance, emd is L1
+    print(class_name[item], int(number), f, cd, emd)
+    print(class_name[item], int(number), f, cd, emd, file=log)
 log.close()
 sess.close()
 data.shutdown()
-print 'Testing Finished!'
+print('Testing Finished!')
