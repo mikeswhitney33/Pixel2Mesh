@@ -1,3 +1,12 @@
-__pycache__
+
 env
 Data/ShapeNetP2M*
+Data/checkpoint*
+Data/examples/*.obj
+__pycache__
+.vscode
+*.pyc
+record_train_loss.txt
+record_evaluation.txt
+external/*.o
+external/*.so

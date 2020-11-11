@@ -15,12 +15,10 @@
 # limitations under the License.
 #
 import os, sys
-import pickle
 import tensorflow as tf
-import numpy as np
-from pixel2mesh.models import GCN
-from pixel2mesh.fetcher import *
-from pixel2mesh.cd_dist import nn_distance
+from p2m.models import GCN
+from p2m.fetcher import *
+from p2m.cd_dist import nn_distance
 sys.path.append('external')
 from tf_approxmatch import approx_match, match_cost
 
@@ -111,9 +109,8 @@ sess.run(tf.global_variables_initializer())
 model.load(sess)
 
 # Construct feed dictionary
-with open("Data/ellipsoid/info_ellipsiod.dat", "rb") as file:
-    pkl = pickle.load(file)
-    feed_dict = construct_feed_dict(pkl, placeholders)
+pkl = pickle.load(open('Data/ellipsoid/info_ellipsoid.dat', 'rb'))
+feed_dict = construct_feed_dict(pkl, placeholders)
 
 ###
 class_name = {'02828884':'bench','03001627':'chair','03636649':'lamp','03691459':'speaker','04090263':'firearm','04379243':'table','04530566':'watercraft','02691156':'plane','02933112':'cabinet','02958343':'car','03211117':'monitor','04256520':'couch','04401088':'cellphone'}
@@ -140,17 +137,17 @@ for iters in range(train_number):
 	sum_f[class_id] += f_score(label,predict,d1,d2,[0.0001, 0.0002])
 	sum_cd[class_id] += cd # cd is the mean of all distance
 	sum_emd[class_id] += emd[0] # emd is the sum of all distance
-    print(f"process numbers: {iters}")
+	print('processed number', iters)
 
 log = open('record_evaluation.txt', 'a')
-with open("record_evaluation.txt", "a") as log:
-    for item in model_number:
-        number = model_number[item] + 1e-8
-        f = sum_f[item] / number
-        cd = (sum_cd[item] / number) * 1000 #cd is the mean of all distance, cd is L2
-        emd = (sum_emd[item] / number) * 0.01 #emd is the sum of all distance, emd is L1
-        print(class_name[item], int(number), f, cd, emd)
-        print(log, class_name[item], int(number), f, cd, emd)
+for item in model_number:
+	number = model_number[item] + 1e-8
+	f = sum_f[item] / number
+	cd = (sum_cd[item] / number) * 1000 #cd is the mean of all distance, cd is L2
+	emd = (sum_emd[item] / number) * 0.01 #emd is the sum of all distance, emd is L1
+	print(class_name[item], int(number), f, cd, emd)
+	print(class_name[item], int(number), f, cd, emd, file=log)
+log.close()
 sess.close()
 data.shutdown()
 print('Testing Finished!')

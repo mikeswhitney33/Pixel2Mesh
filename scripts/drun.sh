@@ -1,0 +1,1 @@
+docker run -it --rm --volume $(pwd):/usr/src --gpus all pix2mesh
