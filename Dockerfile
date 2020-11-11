@@ -1,6 +1,7 @@
 FROM tensorflow/tensorflow:1.3.0-gpu-py3
 
 COPY scripts /usr/src/scripts
+COPY requirements.txt /usr/src/requirements.txt
 WORKDIR /usr/src
 
 

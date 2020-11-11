@@ -38,7 +38,6 @@ class Renderer:
                 }
             ''',
         )
-
         self.mvp = self.prog["Mvp"]
 
     def render(self, filename, front_left="front"):
@@ -50,16 +49,14 @@ class Renderer:
         self.ctx.enable(moderngl.DEPTH_TEST)
         proj = Matrix44.perspective_projection(45.0, 1, 0.1, 1000.0)
 
-        if front_left == "front":
-            lookfrom = (0, 0, 3)
-        else:
-            lookfrom = (3, 0, 0)
+        lookfrom = (0, 0, 3)
+        if front_left == "side":
+            lookfrom = lookfrom[::-1]
 
         lookat = Matrix44.look_at(
             lookfrom,
             (0.0, 0.0, 0.0),
-            (0.0, 1.0, 0.0),
-        )
+            (0.0, 1.0, 0.0))
 
         self.mvp.write((proj * lookat).astype('f4'))
 
