@@ -1,1 +1,1 @@
-docker build -t pix2mesh  - < Dockerfile
+docker build -t pix2mesh  - < Dockerfile --network host
