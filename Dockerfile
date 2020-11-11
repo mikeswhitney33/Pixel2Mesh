@@ -1,4 +1,5 @@
-FROM tensorflow/tensorflow:1.3.0-gpu-py3
+# FROM tensorflow/tensorflow:1.3.0-gpu-py3
+FROM tensorflow/tensorflow:latest-gpu
 
 COPY scripts /usr/src/scripts
 COPY requirements.txt /usr/src/requirements.txt
