@@ -1,1 +1,1 @@
-docker run --env SNAPCRAFT_SETUP_CORE=1 --rm -it --volume $(pwd):/usr/src --gpus all pix2mesh bash
+docker run -it --rm --volume $(pwd):/usr/src --gpus all pix2mesh

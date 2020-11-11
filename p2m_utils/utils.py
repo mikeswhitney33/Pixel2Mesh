@@ -10,6 +10,7 @@ import moderngl_window as mglw
 class Renderer:
     def __init__(self):
         self.ctx = moderngl.create_standalone_context()
+        mglw.activate_context(ctx=self.ctx)
         self.fbo = self.ctx.simple_framebuffer((224, 224), components=4)
         self.fbo.use()
 
