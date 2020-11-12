@@ -1,103 +1,98 @@
-#  Copyright (C) 2019 Nanyang Wang, Yinda Zhang, Zhuwen Li, Yanwei Fu, Wei Liu, Yu-Gang Jiang, Fudan University
-#
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License.  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+import argparse
 import os
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import tqdm
+import numpy as np
 
-from p2m.fetcher import *
-from p2m.models import GCN
-from p2m.utils import *
+from p2m_utils import path_utils
+from p2m.losses import mesh_loss, laplace_loss
+from p2m.models import Pix2Mesh
+from p2m.fetcher import DataFetcher
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
-# Set random seed
-seed = 1024
-np.random.seed(seed)
-tf.disable_eager_execution()
-tf.set_random_seed(seed)
+def loss_fn(model, inputs, labels, loss_args, training=False):
+    _, features, _, _ = inputs
+    output1, output1_2, output2, output2_2, output3 = model(inputs, training)
+    edges, lape_idx, weight_decay = loss_args
+    loss = 0
+    loss += mesh_loss(output1, labels, edges, 1)
+    loss += mesh_loss(output2, labels, edges, 2)
+    loss += mesh_loss(output3, labels, edges, 3)
+    loss += 0.1 * laplace_loss(features, output1, lape_idx, 1)
+    loss += laplace_loss(output1_2, output2, lape_idx, 2)
+    loss += laplace_loss(output2_2, output3, lape_idx, 3)
 
-# Settings
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-flags.DEFINE_string('data_list', 'Data/train_list.txt', 'Data list.') # training data list
-flags.DEFINE_float('learning_rate', 1e-5, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 5, 'Number of epochs to train.')
-flags.DEFINE_integer('hidden', 256, 'Number of units in hidden layer.') # gcn hidden layer channel
-flags.DEFINE_integer('feat_dim', 963, 'Number of units in feature layer.') # image feature dim
-flags.DEFINE_integer('coord_dim', 3, 'Number of units in output layer.')
-flags.DEFINE_float('weight_decay', 5e-6, 'Weight decay for L2 loss.')
+    conv_layers = list(range(1,15)) + list(range(17,31)) + list(range(33,48))
+    for layer_id in conv_layers:
+        for var in model.layers[layer_id].trainable_variables:
+            loss += weight_decay * tf.nn.l2_loss(var)
+    return loss
 
-# Define placeholders(dict) and model
-num_blocks = 3
-num_supports = 2
-placeholders = {
-    'features': tf.placeholder(tf.float32, shape=(None, 3)),
-    'img_inp': tf.placeholder(tf.float32, shape=(224, 224, 3)),
-    'labels': tf.placeholder(tf.float32, shape=(None, 6)),
-    'support1': [tf.sparse_placeholder(tf.float32) for _ in range(num_supports)],
-    'support2': [tf.sparse_placeholder(tf.float32) for _ in range(num_supports)],
-    'support3': [tf.sparse_placeholder(tf.float32) for _ in range(num_supports)],
-    'faces': [tf.placeholder(tf.int32, shape=(None, 4)) for _ in range(num_blocks)],  #for face loss, not used.
-    'edges': [tf.placeholder(tf.int32, shape=(None, 2)) for _ in range(num_blocks)],
-    'lape_idx': [tf.placeholder(tf.int32, shape=(None, 10)) for _ in range(num_blocks)], #for laplace term
-    'pool_idx': [tf.placeholder(tf.int32, shape=(None, 2)) for _ in range(num_blocks-1)] #for unpooling
-}
-model = GCN(placeholders, logging=True)
 
-# Load data, initialize session
-data = DataFetcher(FLAGS.data_list)
-data.setDaemon(True) ####
-data.start()
-config=tf.ConfigProto()
-#config.gpu_options.allow_growth=True
-config.allow_soft_placement=True
-sess = tf.Session(config=config)
-sess.run(tf.global_variables_initializer())
-#model.load(sess)
+def grad(model, *args, **kwargs):
+    with tf.GradientTape() as tape:
+        loss = loss_fn(model, *args, **kwargs)
+    return loss, tape.gradient(loss, model.trainable_variables)
 
-# Train graph model
-train_loss = open('record_train_loss.txt', 'a')
-train_loss.write('Start training, lr =  %f\n'%(FLAGS.learning_rate))
-pkl = pickle.load(open('Data/ellipsoid/info_ellipsoid.dat', 'rb'), encoding='latin')
-feed_dict = construct_feed_dict(pkl, placeholders)
 
-train_number = data.number
-for epoch in tqdm.tqdm(range(FLAGS.epochs)):
-    all_loss = np.zeros(train_number,dtype='float32')
-    mean_loss = 0
-    pbar = tqdm.tqdm(range(train_number), leave=False)
-    for iters in pbar:
-        # Fetch training data
-        img_inp, y_train, data_id = data.fetch()
-        feed_dict.update({placeholders['img_inp']: img_inp})
-        feed_dict.update({placeholders['labels']: y_train})
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--learning-rate", "-lr", type=float, default=1e-5)
+    parser.add_argument("--weight-decay", "-wd", type=float, default=5e-6)
+    parser.add_argument("--epochs", "-e", type=int, default=5)
+    parser.add_argument("--max-batches", "-mb", type=int, default=-1)
+    parser.add_argument("--outfile", "-o", type=str, default=os.path.join(path_utils.get_data_dir(), "checkpoint"))
+    args = parser.parse_args()
 
-        # Training step
-        _, dists,out1,out2,out3 = sess.run([model.opt_op,model.loss,model.output1,model.output2,model.output3], feed_dict=feed_dict)
-        all_loss[iters] = dists
-        mean_loss = np.mean(all_loss[np.where(all_loss)])
+    learning_rate = args.learning_rate
+    weight_decay = args.weight_decay
+    epochs = args.epochs
+    max_batches = args.max_batches
+    outfile = args.outfile
 
-        if (iters+1) % 128 == 0:
-            pbar.desc = f'Mean loss = {mean_loss}, iter loss = {dists}, {data.queue.qsize()}'
-    # Save model
-    model.save(sess)
-    train_loss.write('Epoch %d, loss %f\n'%(epoch+1, mean_loss))
-    train_loss.flush()
+    feat_dim = 963
+    hidden = 256
+    coord_dim = 3
+    data_list = os.path.join(path_utils.get_data_dir(), "train_list.txt")
 
-data.shutdown()
-print('Training Finished!')
+    model = Pix2Mesh(feat_dim, hidden, coord_dim)
+    optimizer = tf.optimizers.Adam(learning_rate=learning_rate)
+
+    @tf.function(experimental_relax_shapes=True)
+    def train_step(inputs, labels, loss_args):
+        nonlocal model, optimizer
+        loss, grads = grad(model, inputs, labels, loss_args, training=True)
+        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+        return loss
+
+    data = DataFetcher(data_list)
+    data.setDaemon(True) ####
+    data.start()
+
+    train_number = min(data.number, data.number if max_batches < 0 else max_batches)
+
+    epoch_pbar = tqdm.tqdm(range(epochs))
+    for _ in epoch_pbar:
+        all_loss = np.zeros(train_number, dtype='float32')
+        mean_loss = 0
+        batch_pbar = tqdm.tqdm(range(train_number), leave=False)
+        for iters in batch_pbar:
+            img_inp, y_train, _, feed = data.fetch()
+
+            inputs = img_inp, feed.features, feed.supports, feed.pool_idx
+            loss_args = feed.edges, feed.lape_idx, weight_decay
+
+            loss = train_step(inputs, y_train, loss_args)
+            all_loss[iters] = loss
+            mean_loss = np.mean(all_loss[np.where(all_loss)])
+            if (iters+1) % 128 == 0:
+                batch_pbar.desc = f'Mean loss = {mean_loss}, iter loss = {loss}, {data.queue.qsize()}'
+        epoch_pbar.desc = f"Epoch Loss = {mean_loss}"
+        model.save(outfile)
+    data.shutdown()
+    print('Training Finished!')
+
+
+if __name__ == "__main__":
+    main()
