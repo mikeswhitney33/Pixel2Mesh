@@ -14,12 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import numpy as np
+import os
 import pickle
-import threading
 import queue as Queue
 import sys
-from skimage import io,transform
+import threading
+
+import numpy as np
+import tensorflow as tf
+from p2m_utils import path_utils
+from skimage import io, transform
+
+
+class FeedDict:
+    def __init__(self, pkl):
+        self.features = pkl[0]
+        self.edges = [pkl[i][1][0] for i in range(1, 4)]
+        self.faces = pkl[5]
+        self.pool_idx = pkl[4]
+        self.lape_idx = pkl[7]
+        support1 = [tf.cast(tf.sparse.SparseTensor(*pkl[1][i]), tf.float32) for i in range(len(pkl[1]))]
+        support2 = [tf.cast(tf.sparse.SparseTensor(*pkl[2][i]), tf.float32) for i in range(len(pkl[2]))]
+        support3 = [tf.cast(tf.sparse.SparseTensor(*pkl[3][i]), tf.float32) for i in range(len(pkl[3]))]
+        self.supports = (support1, support2, support3)
+
 
 class DataFetcher(threading.Thread):
     def __init__(self, file_list):
@@ -54,7 +72,11 @@ class DataFetcher(threading.Thread):
         img = transform.resize(img, (224,224))
         img = img[:,:,:3].astype('float32')
 
-        return img, label, pkl_path.split('/')[-1]
+        with open(os.path.join(path_utils.get_data_dir(), "ellipsoid", "info_ellipsoid.dat"), "rb") as file:
+            pkl = pickle.load(file, encoding="latin")
+        feed = FeedDict(pkl)
+
+        return img, label, pkl_path.split('/')[-1], feed
 
     def run(self):
         while self.index < 90000000 and not self.stopped:

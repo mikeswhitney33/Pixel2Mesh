@@ -1,29 +1,29 @@
+
 nvcc = /usr/local/cuda/bin/nvcc
 cudalib = /usr/local/cuda/lib64
-TF_INC=`python -c "import tensorflow as tf; print(tf.sysconfig.get_include())"`
-TF_LIB=`python -c "import tensorflow as tf; print(tf.sysconfig.get_lib())"`
+tensorflow = /usr/local/lib/python3.6/dist-packages/tensorflow/include #/home/wnylol/tools/anaconda2/envs/tensorflow/lib/python2.7/site-packages/tensorflow/include
 
-all: tf_approxmatch_so.so tf_approxmatch_g.cu.o tf_nndistance_so.so tf_nndistance_g.cu.o
+TF_CFLAGS=`python -c "import tensorflow as tf; print(' '.join(tf.sysconfig.get_compile_flags()))"`
+TF_LFLAGS=`python -c "import tensorflow as tf; print(' '.join(tf.sysconfig.get_link_flags()))"`
 
+
+ALL = tf_approxmatch_so.so tf_approxmatch_g.cu.o tf_nndistance_so.so tf_nndistance_g.cu.o
+
+all: $(ALL)
 
 tf_approxmatch_so.so: tf_approxmatch_g.cu.o tf_approxmatch.cpp
-	g++ -std=c++11 tf_approxmatch.cpp tf_approxmatch_g.cu.o -o tf_approxmatch_so.so -shared -fPIC -I $(TF_INC) -L $(TF_LIB) -lcudart -L $(cudalib) -O2 -D_GLIBCXX_USE_CXX11_ABI=0
-
+	g++ -std=c++11 -shared tf_approxmatch_g.cu.o tf_approxmatch.cpp -o tf_approxmatch_so.so -fPIC $(TF_CFLAGS) $(TF_LFLAGS) -L$(cudalib) -O2
 
 tf_approxmatch_g.cu.o: tf_approxmatch_g.cu
-	$(nvcc) -std=c++11 -c -o tf_approxmatch_g.cu.o tf_approxmatch_g.cu -I $(TF_INC) -L $(TF_LIB) -DGOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -O2 -D_GLIBCXX_USE_CXX11_ABI=0
-
+	$(nvcc) -std=c++11 -c tf_approxmatch_g.cu -o tf_approxmatch_g.cu.o -I $(TF_CFLAGS) -DGOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -O2 -Xcudafe="--diag_suppress=2886"
 
 tf_nndistance_so.so: tf_nndistance_g.cu.o tf_nndistance.cpp
-	g++ -std=c++11 tf_nndistance.cpp tf_nndistance_g.cu.o -o tf_nndistance_so.so -shared -fPIC -I $(TF_INC) -L $(TF_LIB) -lcudart -L $(cudalib) -O2 -D_GLIBCXX_USE_CXX11_ABI=0
-
+	g++ -std=c++11 -shared tf_nndistance_g.cu.o tf_nndistance.cpp -o tf_nndistance_so.so -fPIC $(TF_CFLAGS) $(TF_LFLAGS) -L$(cudalib) -O2
 
 tf_nndistance_g.cu.o: tf_nndistance_g.cu
-	$(nvcc) -std=c++11 -c -o tf_nndistance_g.cu.o tf_nndistance_g.cu -I $(TF_INC) -L $(TF_LIB) -DGOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -O2 -D_GLIBCXX_USE_CXX11_ABI=0
->>>>>>> legacy
-
+	$(nvcc) -std=c++11 -c -o tf_nndistance_g.cu.o tf_nndistance_g.cu $(TF_CFLAGS) -DGOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -O2 -Xcudafe="--diag_suppress=2886"
 
 clean:
-	rm tf_approxmatch_so.so
-	rm tf_nndistance_so.so
-	rm  *.cu.o
+	rm -f $(ALL)
+
+.PHONY: clean

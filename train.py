@@ -14,16 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import tensorflow as tf
-from p2m.utils import *
-from p2m.models import GCN
-from p2m.fetcher import *
 import os
+
+import tensorflow.compat.v1 as tf
+import tqdm
+
+from p2m.fetcher import *
+from p2m.models import GCN
+from p2m.utils import *
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # Set random seed
 seed = 1024
 np.random.seed(seed)
+tf.disable_eager_execution()
 tf.set_random_seed(seed)
 
 # Settings
@@ -68,14 +73,15 @@ sess.run(tf.global_variables_initializer())
 # Train graph model
 train_loss = open('record_train_loss.txt', 'a')
 train_loss.write('Start training, lr =  %f\n'%(FLAGS.learning_rate))
-pkl = pickle.load(open('Data/ellipsoid/info_ellipsoid.dat', 'rb'))
+pkl = pickle.load(open('Data/ellipsoid/info_ellipsoid.dat', 'rb'), encoding='latin')
 feed_dict = construct_feed_dict(pkl, placeholders)
 
 train_number = data.number
-for epoch in range(FLAGS.epochs):
+for epoch in tqdm.tqdm(range(FLAGS.epochs)):
     all_loss = np.zeros(train_number,dtype='float32')
     mean_loss = 0
-    for iters in range(train_number):
+    pbar = tqdm.tqdm(range(train_number), leave=False)
+    for iters in pbar:
         # Fetch training data
         img_inp, y_train, data_id = data.fetch()
         feed_dict.update({placeholders['img_inp']: img_inp})
@@ -85,9 +91,9 @@ for epoch in range(FLAGS.epochs):
         _, dists,out1,out2,out3 = sess.run([model.opt_op,model.loss,model.output1,model.output2,model.output3], feed_dict=feed_dict)
         all_loss[iters] = dists
         mean_loss = np.mean(all_loss[np.where(all_loss)])
+
         if (iters+1) % 128 == 0:
-            print('Epoch %d, Iteration %d'%(epoch + 1,iters + 1))
-            print('Mean loss = %f, iter loss = %f, %d'%(mean_loss,dists,data.queue.qsize()))
+            pbar.desc = f'Mean loss = {mean_loss}, iter loss = {dists}, {data.queue.qsize()}'
     # Save model
     model.save(sess)
     train_loss.write('Epoch %d, loss %f\n'%(epoch+1, mean_loss))

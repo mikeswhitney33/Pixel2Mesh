@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 from __future__ import division
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tflearn
 from p2m.layers import *
 

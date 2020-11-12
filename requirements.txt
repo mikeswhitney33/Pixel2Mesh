@@ -1,13 +1,13 @@
 moderngl
 moderngl-window
 pyrr
-numpy>=1.16
-pillow>=5
+numpy
+pillow
 pywavefront
 scikit-learn
 scikit-image
-tflearn
 opencv-python
 trimesh
 scipy
 networkx
+tqdm

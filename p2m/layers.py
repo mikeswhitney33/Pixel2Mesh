@@ -18,7 +18,7 @@ from __future__ import division
 from p2m.inits import *
 import tensorflow as tf
 
-flags = tf.app.flags
+flags = tf.compat.v1.app.flags
 FLAGS = flags.FLAGS
 
 # global unique layer ID dictionary for layer name assignment
@@ -26,9 +26,9 @@ _LAYER_UIDS = {}
 
 def project(img_feat, x, y, dim):
     x1 = tf.floor(x)
-    x2 = tf.minimum(tf.ceil(x), tf.cast(tf.shape(img_feat)[0], tf.float32) - 1)
+    x2 = tf.minimum(tf.math.ceil(x), tf.cast(tf.shape(img_feat)[0], tf.float32) - 1)
     y1 = tf.floor(y)
-    y2 = tf.minimum(tf.ceil(y), tf.cast(tf.shape(img_feat)[1], tf.float32) - 1)
+    y2 = tf.minimum(tf.math.ceil(y), tf.cast(tf.shape(img_feat)[1], tf.float32) - 1)
     Q11 = tf.gather_nd(img_feat, tf.stack([tf.cast(x1,tf.int32), tf.cast(y1,tf.int32)],1))
     Q12 = tf.gather_nd(img_feat, tf.stack([tf.cast(x1,tf.int32), tf.cast(y2,tf.int32)],1))
     Q21 = tf.gather_nd(img_feat, tf.stack([tf.cast(x2,tf.int32), tf.cast(y1,tf.int32)],1))
@@ -62,121 +62,77 @@ def get_layer_uid(layer_name=''):
 def sparse_dropout(x, keep_prob, noise_shape):
     """Dropout for sparse tensors."""
     random_tensor = keep_prob
-    random_tensor += tf.random_uniform(noise_shape)
+    random_tensor += tf.random.uniform(noise_shape)
     dropout_mask = tf.cast(tf.floor(random_tensor), dtype=tf.bool)
     pre_out = tf.sparse_retain(x, dropout_mask)
     return pre_out * (1./keep_prob)
+
+class SparseDropout(tf.keras.Model):
+    def __init__(self, keep_prob, noise_shape):
+        super().__init__()
+        self.keep_prob = keep_prob
+        self.noise_shape = noise_shape
+
+    def call(self, inputs, training=False):
+        x = inputs
+        if training:
+            x = sparse_dropout(x, self.keep_prob, self.noise_shape)
+        return x
 
 
 def dot(x, y, sparse=False):
     """Wrapper for tf.matmul (sparse vs dense)."""
     if sparse:
-        res = tf.sparse_tensor_dense_matmul(x, y)
+        res = tf.sparse.sparse_dense_matmul(x, y)
     else:
         res = tf.matmul(x, y)
     return res
 
 
-class Layer(object):
-    """Base layer class. Defines basic API for all layer objects.
-    Implementation inspired by keras (http://keras.io).
-
-    # Properties
-        name: String, defines the variable scope of the layer.
-        logging: Boolean, switches Tensorflow histogram logging on/off
-
-    # Methods
-        _call(inputs): Defines computation graph of layer
-            (i.e. takes input, returns output)
-        __call__(inputs): Wrapper for _call()
-        _log_vars(): Log all variables
-    """
-
-    def __init__(self, **kwargs):
-        allowed_kwargs = {'name', 'logging'}
-        for kwarg in kwargs.keys():
-            assert kwarg in allowed_kwargs, 'Invalid keyword argument: ' + kwarg
-        name = kwargs.get('name')
-        if not name:
-            layer = self.__class__.__name__.lower()
-            name = layer + '_' + str(get_layer_uid(layer))
-        self.name = name
-        self.vars = {}
-        logging = kwargs.get('logging', False)
-        self.logging = logging
-        self.sparse_inputs = False
-
-    def _call(self, inputs):
-        return inputs
-
-    def __call__(self, inputs):
-        with tf.name_scope(self.name):
-            if self.logging and not self.sparse_inputs:
-                tf.summary.histogram(self.name + '/inputs', inputs)
-            outputs = self._call(inputs)
-            if self.logging:
-                tf.summary.histogram(self.name + '/outputs', outputs)
-            return outputs
-
-    def _log_vars(self):
-        for var in self.vars:
-            tf.summary.histogram(self.name + '/vars/' + var, self.vars[var])
-
-class GraphConvolution(Layer):
-    """Graph convolution layer."""
-    def __init__(self, input_dim, output_dim, placeholders, dropout=False,
-                 sparse_inputs=False, act=tf.nn.relu, bias=True, gcn_block_id=1,
-                 featureless=False, **kwargs):
-        super(GraphConvolution, self).__init__(**kwargs)
-
-        if dropout:
-            self.dropout = placeholders['dropout']
-        else:
-            self.dropout = 0.
-
-        self.act = act
-        if gcn_block_id == 1:
-            self.support = placeholders['support1']
-        elif gcn_block_id == 2:
-            self.support = placeholders['support2']
-        elif gcn_block_id == 3:
-            self.support = placeholders['support3']
-
+class GraphConvolution(tf.keras.Model):
+    def __init__(self, input_dim, output_dim, support_idx, num_supports=2, dropout=0, sparse_inputs=False, act=tf.nn.relu, bias=True, featureless=False):
+        super().__init__()
         self.sparse_inputs = sparse_inputs
+        self.num_features_nonzero = 3
+        self.act = act
+        self.num_supports = num_supports
         self.featureless = featureless
         self.bias = bias
 
-        # helper variable for sparse dropout
-        self.num_features_nonzero = 3#placeholders['num_features_nonzero']
+        self.support_idx = support_idx
 
-        with tf.variable_scope(self.name + '_vars'):
-            for i in range(len(self.support)):
-                self.vars['weights_' + str(i)] = glorot([input_dim, output_dim],
-                                                        name='weights_' + str(i))
-            if self.bias:
-                self.vars['bias'] = zeros([output_dim], name='bias')
+        self.dropout = None
+        if dropout:
+            if self.sparse_inputs:
+                self.dropout = SparseDropout(1 - dropout, self.num_features_nonzero)
+            else:
+                self.dropout = tf.keras.layers.Dropout(1 - dropout)
 
-        if self.logging:
-            self._log_vars()
+        self.vars = {}
+        for i in range(self.num_supports):
+            self.vars[f"weights_{i}"] = glorot([input_dim, output_dim])
+        if self.bias:
+            self.vars['bias'] = zeros([output_dim], name='bias')
 
-    def _call(self, inputs):
-        x = inputs
+    def call(self, inputs, training=False):
+        x, in_supports = inputs
+        in_support = in_supports[self.support_idx]
+        if len(in_support) != self.num_supports:
+            raise ValueError(f"length of support doesn't match num_supports.  got: ({len(in_support)} vs. {self.num_supports}")
 
         # dropout
-        if self.sparse_inputs:
-            x = sparse_dropout(x, 1-self.dropout, self.num_features_nonzero)
-        else:
-            x = tf.nn.dropout(x, 1-self.dropout)
+        if self.dropout:
+            x = self.dropout(x, training=training)
 
         # convolve
         supports = list()
-        for i in range(len(self.support)):
+        for i in range(len(in_support)):
             if not self.featureless:
                 pre_sup = dot(x, self.vars['weights_' + str(i)],
                               sparse=self.sparse_inputs)
             else:
                 pre_sup = self.vars['weights_' + str(i)]
-            support = dot(self.support[i], pre_sup, sparse=True)
+            support = dot(in_support[i], pre_sup, sparse=True)
             supports.append(support)
         output = tf.add_n(supports)
 
@@ -186,61 +142,27 @@ class GraphConvolution(Layer):
 
         return self.act(output)
 
-class GraphPooling(Layer):
-    """Graph Pooling layer."""
-    def __init__(self, placeholders, pool_id=1, **kwargs):
-        super(GraphPooling, self).__init__(**kwargs)
 
-        self.pool_idx = placeholders['pool_idx'][pool_id-1]
+class GraphPooling(tf.keras.Model):
+    def __init__(self, pool_id=1):
+        super().__init__()
+        self.pool_id = pool_id
 
-    def _call(self, inputs):
-        X = inputs
+    def call(self, inputs, training=False):
+        X, pool_idx = inputs
+        pool_idx = pool_idx[self.pool_id-1]
 
-        add_feat = (1/2.0) * tf.reduce_sum(tf.gather(X, self.pool_idx), 1)
+        add_feat = (1 / 2.0) * tf.reduce_sum(tf.gather(X, pool_idx), 1)
         outputs = tf.concat([X, add_feat], 0)
-
         return outputs
 
-class GraphProjection(Layer):
-    """Graph Pooling layer."""
-    def __init__(self, placeholders, **kwargs):
-        super(GraphProjection, self).__init__(**kwargs)
 
-        self.img_feat = placeholders['img_feat']
-
-    '''
-    def _call(self, inputs):
-        coord = inputs
-        X = inputs[:, 0]
-        Y = inputs[:, 1]
-        Z = inputs[:, 2]
-
-        #h = (-Y)/(-Z)*248 + 224/2.0 - 1
-        #w = X/(-Z)*248 + 224/2.0 - 1 [28,14,7,4]
-        h = 248.0 * tf.divide(-Y, -Z) + 112.0
-        w = 248.0 * tf.divide(X, -Z) + 112.0
-
-        h = tf.minimum(tf.maximum(h, 0), 223)
-        w = tf.minimum(tf.maximum(w, 0), 223)
-        indeces = tf.stack([h,w], 1)
-
-        idx = tf.cast(indeces/(224.0/56.0), tf.int32)
-        out1 = tf.gather_nd(self.img_feat[0], idx)
-        idx = tf.cast(indeces/(224.0/28.0), tf.int32)
-        out2 = tf.gather_nd(self.img_feat[1], idx)
-        idx = tf.cast(indeces/(224.0/14.0), tf.int32)
-        out3 = tf.gather_nd(self.img_feat[2], idx)
-        idx = tf.cast(indeces/(224.0/7.00), tf.int32)
-        out4 = tf.gather_nd(self.img_feat[3], idx)
-
-        outputs = tf.concat([coord,out1,out2,out3,out4], 1)
-        return outputs
-    '''
-    def _call(self, inputs):
-        coord = inputs
-        X = inputs[:, 0]
-        Y = inputs[:, 1]
-        Z = inputs[:, 2]
+class GraphProjection(tf.keras.Model):
+    def call(self, inputs, training=False):
+        coord, img_feat = inputs
+        X = coord[:, 0]
+        Y = coord[:, 1]
+        Z = coord[:, 2]
 
         h = 250 * tf.divide(-Y, -Z) + 112
         w = 250 * tf.divide(X, -Z) + 112
@@ -250,18 +172,18 @@ class GraphProjection(Layer):
 
         x = h/(224.0/56)
         y = w/(224.0/56)
-        out1 = project(self.img_feat[0], x, y, 64)
+        out1 = project(img_feat[0], x, y, 64)
 
         x = h/(224.0/28)
         y = w/(224.0/28)
-        out2 = project(self.img_feat[1], x, y, 128)
+        out2 = project(img_feat[1], x, y, 128)
 
         x = h/(224.0/14)
         y = w/(224.0/14)
-        out3 = project(self.img_feat[2], x, y, 256)
+        out3 = project(img_feat[2], x, y, 256)
 
         x = h/(224.0/7)
         y = w/(224.0/7)
-        out4 = project(self.img_feat[3], x, y, 512)
+        out4 = project(img_feat[3], x, y, 512)
         outputs = tf.concat([coord,out1,out2,out3,out4], 1)
         return outputs

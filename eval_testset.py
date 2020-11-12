@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 import os, sys
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from p2m.models import GCN
 from p2m.fetcher import *
 from p2m.cd_dist import nn_distance

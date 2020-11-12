@@ -14,15 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import pickle
 from skimage import io,transform
-from p2m.api import GCN
+from p2m.models import GCN
 from p2m.utils import *
 
 # Set random seed
 seed = 1024
 np.random.seed(seed)
+tf.disable_eager_execution()
 tf.set_random_seed(seed)
 
 # Settings

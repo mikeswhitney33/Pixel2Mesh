@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.python.framework import ops
 nn_distance_module=tf.load_op_library('./external/tf_nndistance_so.so')
 

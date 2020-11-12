@@ -58,7 +58,7 @@ if __name__=='__main__':
 		t0=time.time()
 		t1=t0
 		best=1e100
-		for i in xrange(100):
+		for i in range(100):
 			trainloss,_=sess.run([loss,train])
 			newt=time.time()
 			best=min(best,newt-t1)
