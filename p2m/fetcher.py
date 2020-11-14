@@ -22,7 +22,6 @@ import threading
 
 import numpy as np
 import tensorflow as tf
-from p2m_utils import path_utils
 from skimage import io, transform
 
 
@@ -72,7 +71,8 @@ class DataFetcher(threading.Thread):
         img = transform.resize(img, (224,224))
         img = img[:,:,:3].astype('float32')
 
-        with open(os.path.join(path_utils.get_data_dir(), "ellipsoid", "info_ellipsoid.dat"), "rb") as file:
+        pkl_path2 = pkl_path.replace("rendering", "features")
+        with open(pkl_path2, "rb") as file:
             pkl = pickle.load(file, encoding="latin")
         feed = FeedDict(pkl)
 

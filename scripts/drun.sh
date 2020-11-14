@@ -1,1 +1,1 @@
-docker run -it --rm --volume $(pwd):/usr/src --gpus all pix2mesh
+docker run -u $(id -u):$(id -g) -it --rm --volume $(pwd):/usr/src --gpus all pix2mesh
