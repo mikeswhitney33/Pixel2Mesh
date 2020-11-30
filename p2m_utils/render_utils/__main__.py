@@ -9,6 +9,8 @@ renderers = {
     "pc": PCRenderer
 }
 
+kernel = np.ones((5, 5))
+
 parser = argparse.ArgumentParser()
 parser.add_argument("filename")
 parser.add_argument("filetype", choices=list(renderers.keys()))
@@ -16,10 +18,10 @@ args = parser.parse_args()
 
 renderer = renderers[args.filetype]()
 image = renderer.render(args.filename, "front")
-npim = np.array(image.convert("L"))
-filled = np.where(binary_closing(npim), 255, 0).astype(np.uint8)
+npim = image
+filled = np.where(binary_closing(npim, kernel), 255, 0).astype(np.uint8)
 Image.fromarray(filled).save("out-front.png".format(args.filename))
 
 
-image = Image.fromarray(np.where(binary_closing(np.array(renderer.render(args.filename, "side").convert("L"))), 255, 0).astype(np.uint8))
+image = Image.fromarray(np.where(binary_closing(renderer.render(args.filename, "side"), kernel), 255, 0).astype(np.uint8))
 image.save("out-side.png".format(args.filename))

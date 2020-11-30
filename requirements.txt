@@ -6,8 +6,9 @@ pillow
 pywavefront
 scikit-learn
 scikit-image
-opencv-python
+opencv-python==3.4.1.15
 trimesh
+triangle
 scipy
 networkx
 tqdm

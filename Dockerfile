@@ -5,7 +5,7 @@ COPY scripts /usr/src/scripts
 COPY requirements.txt /usr/src/requirements.txt
 WORKDIR /usr/src
 
-RUN apt update && apt install -y git libgl1-mesa-dev libx11-dev xvfb && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y git libgl1-mesa-dev libx11-dev xvfb libfontconfig1 libxrender1 && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 ENV DISPLAY=:99.0

@@ -67,4 +67,4 @@ class BaseRenderer:
         self._render(vao)
         image = Image.frombytes('RGBA', (224, 224), self.fbo.read(components=4))
         image = image.transpose(Image.FLIP_TOP_BOTTOM)
-        return Image.fromarray(np.where(binary_closing(np.array(image.convert("L"))), 255, 0).astype(np.uint8))
+        return np.array(Image.fromarray(np.where(binary_closing(np.array(image.convert("L"))), 255, 0).astype(np.uint8)))

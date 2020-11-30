@@ -80,7 +80,7 @@ def construct_feed_dict(features, support, labels, labels_mask, placeholders):
 
 def chebyshev_polynomials(adj, k):
     """Calculate Chebyshev polynomials up to order k. Return a list of sparse matrices (tuple representation)."""
-    print("Calculating Chebyshev polynomials up to order {}...".format(k))
+    # print("Calculating Chebyshev polynomials up to order {}...".format(k))
 
     adj_normalized = normalize_adj(adj)
     laplacian = sp.eye(adj.shape[0]) - adj_normalized
@@ -103,7 +103,7 @@ def chebyshev_polynomials(adj, k):
 
 def dense_cheb(adj, k):
     """Calculate Chebyshev polynomials up to order k. Return a list of sparse matrices (tuple representation)."""
-    print("Calculating Chebyshev polynomials up to order {}...".format(k))
+    # print("Calculating Chebyshev polynomials up to order {}...".format(k))
 
     adj_normalized = normalize_adj(adj)
     laplacian = sp.eye(adj.shape[0]) - adj_normalized
@@ -166,8 +166,9 @@ def write_obj(path, vertices, faces):
 def cal_lap_index(mesh_neighbor):
     lap_index = np.zeros([mesh_neighbor.shape[0], 2 + 8]).astype(np.int32)
     for i, j in enumerate(mesh_neighbor):
-        lenj = len(j)
-        lap_index[i][0:lenj] = j
+        # lenj = len(j)
+        lenj = min(8, len(j))
+        lap_index[i][0:lenj] = j[:lenj]
         lap_index[i][lenj:-2] = -1
         lap_index[i][-2] = i
         lap_index[i][-1] = lenj
@@ -195,7 +196,7 @@ def obj2dat(raw_mesh):
     edges_1 = edges_1[edges_1[:,0].argsort(kind='mergesort')]
     info['unpool_idx']['stage1_2'] = edges_1
 
-    lap_1 = cal_lap_index(mesh.vertex_neighbors)
+    lap_1 = cal_lap_index(np.array(mesh.vertex_neighbors))
     info['lap_idx']['stage1'] = lap_1
 
     faces_1 = np.array(mesh.faces)
@@ -215,7 +216,7 @@ def obj2dat(raw_mesh):
     edges_2 = edges_2[edges_2[:,0].argsort(kind='mergesort')]
     info['unpool_idx']['stage2_3'] = edges_2
 
-    lap_2 = cal_lap_index(mesh2.vertex_neighbors)
+    lap_2 = cal_lap_index(np.array(mesh2.vertex_neighbors))
     info['lap_idx']['stage2'] = lap_2
 
     edges_3, faces_3 = unpool_face(faces_2, edges_2, coords_2)
@@ -233,7 +234,7 @@ def obj2dat(raw_mesh):
     edges_3 = edges_3[edges_3[:,0].argsort(kind='mergesort')]
     info['unpool_idx']['stage3_4'] = edges_3
 
-    lap_3 = cal_lap_index(mesh3.vertex_neighbors)
+    lap_3 = cal_lap_index(np.array(mesh3.vertex_neighbors))
     info['lap_idx']['stage3'] = lap_3
 
     edges_4, faces_4 = unpool_face(faces_3, edges_3, coords_3)
@@ -251,7 +252,7 @@ def obj2dat(raw_mesh):
     edges_4 = edges_4[edges_4[:,0].argsort(kind='mergesort')]
     info['unpool_idx']['stage4_5'] = edges_4
 
-    lap_4 = cal_lap_index(mesh4.vertex_neighbors)
+    lap_4 = cal_lap_index(np.array(mesh4.vertex_neighbors))
     info['lap_idx']['stage4'] = lap_4
 
     dat = [

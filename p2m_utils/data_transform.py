@@ -4,6 +4,9 @@ from p2m_utils import rough_model
 from p2m_utils.dat_utils import obj2dat
 from p2m_utils import path_utils
 import os
+from skimage.morphology import binary_closing
+import numpy as np
+import tqdm
 
 def pcfile2datfile(pc_file, out_file):
     dat = pcfile2dat(pc_file)
@@ -12,8 +15,9 @@ def pcfile2datfile(pc_file, out_file):
 
 def pcfile2dat(pc_file):
     renderer = PCRenderer()
-    front = renderer.render(pc_file, front_side="front")
-    side = renderer.render(pc_file, front_side="side")
+    kernel = np.ones((5, 5))
+    front = np.where(binary_closing(renderer.render(pc_file, front_side="front"), kernel), 255, 0).astype(np.uint8)
+    side = np.where(binary_closing(renderer.render(pc_file, front_side="side"), kernel), 255, 0).astype(np.uint8)
 
     raw_mesh = rough_model.make_rough_model(front, side)
     dat = obj2dat(raw_mesh)
@@ -23,8 +27,9 @@ def pcfile2dat(pc_file):
 
 def transform_dataset(data_list):
     with open(data_list, "r") as ifile:
-        file_names = map(lambda x : x.strip(), ifile.readlines())
-    for pcfile in file_names:
+        file_names = list(map(lambda x : x.strip(), ifile.readlines()))
+    for pcfile in tqdm.tqdm(file_names):
+        # print(pcfile)
         outfile = pcfile.replace("rendering", "features")
         feature_dir = os.path.dirname(outfile)
         if not os.path.exists(feature_dir):

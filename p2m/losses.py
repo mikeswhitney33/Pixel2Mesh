@@ -18,13 +18,22 @@ import tensorflow as tf
 from p2m.chamfer import *
 
 def laplace_coord(pred, lape_idx, block_id):
+    # lape_idx.shape = [(None, 10), (None, 10), (None, 10)]
     vertex = tf.concat([pred, tf.zeros([1,3])], 0)
+    # vertex.shape = (None, 3)
     indices = lape_idx[block_id-1][:, :8]
+    # indices.shape = (None, 8)
     weights = tf.cast(lape_idx[block_id-1][:,-1], tf.float32)
+    # weight.shape = (None, 1)
 
     weights = tf.tile(tf.reshape(tf.reciprocal(weights), [-1,1]), [1,3])
+    # weights.shape = (None, 3)
     laplace = tf.reduce_sum(tf.gather(vertex, indices), 1)
+    # pre-reduce_sum = (8, 3)
+    # post-reduce_sum = (8,)
     laplace = tf.subtract(pred, tf.multiply(laplace, weights))
+    #  pred - laplace * weights
+    #  (8, 3) - (8,) * (8, 3)
     return laplace
 
 def laplace_loss(pred1, pred2, lape_idx, block_id):
