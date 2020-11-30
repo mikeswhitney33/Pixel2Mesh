@@ -11,3 +11,4 @@ trimesh
 scipy
 networkx
 tqdm
+shapely
