@@ -5,7 +5,7 @@ import trimesh
 import shapely.geometry
 from shapely.geometry import Polygon
 
-def make_rough_model(front_seg, side_seg,contour_method=0):
+def make_rough_model(front_seg, side_seg,contour_method=0, max_simplification=10):
     """
     Takes a front segmentation & side segmentation of a 3D object (as ndarrays). Currently, y-axis is "up"
     Returns a dict containing the vertices and faces of a rough 3D mesh
@@ -40,7 +40,7 @@ def make_rough_model(front_seg, side_seg,contour_method=0):
     
     # Make sure polygon is valid by applying necessary simplification to rough edges
     simplify_degree = 0
-    while not poly.is_valid and simplify_degree <= 5:
+    while not poly.is_valid and simplify_degree <= max_simplification:
         poly = poly.simplify(simplify_degree)
         simplify_degree +=1
     
@@ -50,7 +50,7 @@ def make_rough_model(front_seg, side_seg,contour_method=0):
         
         # Make sure polygon is valid by applying necessary simplification to rough edges
         simplify_degree = 0
-        while not poly.is_valid and simplify_degree <= 5:
+        while not poly.is_valid and simplify_degree <= max_simplification:
             poly = poly.simplify(simplify_degree)
             simplify_degree +=1
     
