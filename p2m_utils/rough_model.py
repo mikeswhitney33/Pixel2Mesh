@@ -22,17 +22,32 @@ def make_rough_model(front_seg, side_seg,contour_method=0):
     ret, thresh = cv2.threshold(front_seg, 127, 255, 0)                                           #The values here might be wrong if 0/1
     contours, hierarchy,_ = cv2.findContours(thresh, cv2.RETR_CCOMP, contour_methods[contour_method])
 
+    # Sort contours to have largest first, and remove holes with less than 3 points
+    sorted_hierarchy = [x.squeeze(1) for x in sorted(hierarchy, key=lambda x: -x.shape[0]) if len(x) > 2]
+    
     # Adjust points so (0,0) is the bottom left instead of top left
-    contour_outline = ind_convert(hierarchy[0].squeeze(1))
-    contour_holes = [ind_convert(hierarchy[i].squeeze(1)) for i in range(1,len(hierarchy)-1)]
+    contour_outline = ind_convert(sorted_hierarchy[0])
+    contour_holes = [ind_convert(sorted_hierarchy[i]) for i in range(1,len(hierarchy)-1)]
 
     # Use the side image to compute depth
     ret, thresh = cv2.threshold(side_seg, 127, 255, 0)
     x_len, y_len = thresh.shape
     depth = max(np.array([cv2.countNonZero(thresh[y])/y_len for y in contour_outline[:,1]]))
 
+    
     # Generate the 3d Mesh through extrusion
     poly = Polygon(shell=contour_outline, holes=contour_holes).simplify(1)
+    
+    # Make sure polygon is valid by applying necessary simplification to rough edges
+    simplify_degree = 0
+    while not poly.is_valid and simplify_degree <= 5:
+        poly = poly.simplify(simplify_degree)
+        simplify_degree +=1
+    
+    # If the polygon is still not valid, we remove the holes and just use the outer contour
+    if not poly.is_valid:
+        poly = Polygon(shell=contour_outline).simplify(1)
+    
     mesh = trimesh.creation.extrude_polygon(poly, depth)
 
     # Center mesh vertices & depth around origin
