@@ -47,6 +47,12 @@ def make_rough_model(front_seg, side_seg,contour_method=0):
     # If the polygon is still not valid, we remove the holes and just use the outer contour
     if not poly.is_valid:
         poly = Polygon(shell=contour_outline).simplify(1)
+        
+        # Make sure polygon is valid by applying necessary simplification to rough edges
+        simplify_degree = 0
+        while not poly.is_valid and simplify_degree <= 5:
+            poly = poly.simplify(simplify_degree)
+            simplify_degree +=1
     
     mesh = trimesh.creation.extrude_polygon(poly, depth)
 
