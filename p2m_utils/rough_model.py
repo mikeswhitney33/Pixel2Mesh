@@ -27,7 +27,7 @@ def make_rough_model(front_seg, side_seg,contour_method=0):
     
     # Adjust points so (0,0) is the bottom left instead of top left
     contour_outline = ind_convert(sorted_hierarchy[0])
-    contour_holes = [ind_convert(sorted_hierarchy[i]) for i in range(1,len(hierarchy)-1)]
+    contour_holes = [ind_convert(sorted_hierarchy[i]) for i in range(1,len(sorted_hierarchy)-1)]
 
     # Use the side image to compute depth
     ret, thresh = cv2.threshold(side_seg, 127, 255, 0)
