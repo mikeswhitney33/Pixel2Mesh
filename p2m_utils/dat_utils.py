@@ -244,13 +244,13 @@ def obj2dat(raw_mesh):
 
     mesh4 = trimesh.Trimesh(vertices=coords_4, faces=faces_4, process=False)
 
-    adj_4 = nx.adjacency_matrix(mesh4.vertex_adjacency_graph, nodelist=range(len(coords_4)))
-    cheb_4 = chebyshev_polynomials(adj_4,1)
-    info['support']['stage4'] = cheb_4
+#     adj_4 = nx.adjacency_matrix(mesh4.vertex_adjacency_graph, nodelist=range(len(coords_4)))
+#     cheb_4 = chebyshev_polynomials(adj_4,1)
+#     info['support']['stage4'] = cheb_4
 
-    edges_4 = edges_4[edges_4[:,1].argsort(kind='mergesort')]
-    edges_4 = edges_4[edges_4[:,0].argsort(kind='mergesort')]
-    info['unpool_idx']['stage4_5'] = edges_4
+#     edges_4 = edges_4[edges_4[:,1].argsort(kind='mergesort')]
+#     edges_4 = edges_4[edges_4[:,0].argsort(kind='mergesort')]
+#     info['unpool_idx']['stage4_5'] = edges_4
 
     lap_4 = cal_lap_index(np.array(mesh4.vertex_neighbors))
     info['lap_idx']['stage4'] = lap_4
