@@ -182,7 +182,7 @@ def obj2dat(raw_mesh):
     info['unpool_idx'] = {'stage1_2':None,'stage2_3':None, 'stage3_4':None}
     info['lap_idx'] = {'stage1':None,'stage2':None,'stage3':None,'stage4':None}
 
-    mesh = trimesh.Trimesh(vertices=raw_mesh['vertices'], faces=(raw_mesh['faces']-1), process=False)
+    mesh = trimesh.Trimesh(vertices=np.array(raw_mesh['vertices']), faces=(np.array(raw_mesh['faces'])-1), process=False)
     assert np.all(raw_mesh['faces'] == mesh.faces+1)
     coords_1 = np.array(mesh.vertices, dtype=np.float32)
     info['coords'] = coords_1
